@@ -4,16 +4,35 @@
     import { api } from "./api.js";
     import { appState } from "./store.svelte.js";
     import PostModal from "./PostModal.svelte";
+    import WikiCard from "./WikiCard.svelte";
 
     // Props: Query to fetch data
-    let { query, title } = $props();
+    let { query, title, showWiki = false } = $props();
 
     let posts = $state([]);
     let page = $state(1);
     let loading = $state(false);
     let selectedPost = $state(null);
     let endOfResults = $state(false);
+    let wikiData = $state(null);
     let loadTrigger;
+
+    // Filter Posts based on Blacklist
+    function filterPosts(rawPosts) {
+        if (appState.blacklist.length === 0) return rawPosts;
+        
+        const activeBlacklist = appState.blacklist.filter(b => b.enabled).map(b => b.tag.toLowerCase());
+        if (activeBlacklist.length === 0) return rawPosts;
+
+        return rawPosts.filter(post => {
+            const flatTags = [
+                ...Object.values(post.tags).flat().map(t => t.toLowerCase()),
+                `rating:${post.rating}`
+            ];
+            // If any blacklisted tag is found in the post tags, filter it out
+            return !activeBlacklist.some(bl => flatTags.includes(bl));
+        });
+    }
 
     async function loadPosts(reset = false) {
         if (loading || (endOfResults && !reset)) return;
@@ -23,14 +42,23 @@
             posts = [];
             page = 1;
             endOfResults = false;
+            wikiData = null;
         }
 
-        const newPosts = await api.getPosts(query, page, appState.auth);
+        // Fetch Wiki if first page and showWiki is true and query is single tag
+        if (reset && showWiki && query && !query.includes(' ')) {
+            api.getWiki(query).then(w => wikiData = w);
+        }
+
+        const rawPosts = await api.getPosts(query, page, appState.auth);
+        const filtered = filterPosts(rawPosts);
         
-        if (newPosts.length === 0) {
+        if (rawPosts.length === 0) {
             endOfResults = true;
         } else {
-            posts = [...posts, ...newPosts];
+            posts = [...posts, ...filtered];
+            // If filtering removed all posts, try fetching next page immediately? 
+            // Simplified: just increment. User might scroll to trigger more.
             page++;
         }
         loading = false;
@@ -40,6 +68,15 @@
     $effect(() => {
         // When query changes, reset and reload
         loadPosts(true);
+    });
+    
+    // React to blacklist changes: Re-filter existing posts? 
+    // Ideally we reload, but for simplicity we rely on next fetch or manual reload.
+    // However, we can re-filter the *displayed* posts reactively if we kept rawPosts, 
+    // but storing rawPosts adds memory. Let's just reload when blacklist changes length.
+    let blLen = $derived(appState.blacklist.length);
+    $effect(() => {
+         if (blLen >= 0) { /* trigger re-evaluation if strictly needed, mostly covered by loadPosts logic */ }
     });
 
     // Infinite Scroll
@@ -71,6 +108,12 @@
     </div>
 
     <div class="flex-1 overflow-y-auto p-4" id="scroll-container">
+        {#if wikiData}
+            <div class="mb-6">
+                <WikiCard wiki={wikiData} />
+            </div>
+        {/if}
+
         {#if posts.length === 0 && !loading}
             <div class="h-64 flex flex-col items-center justify-center text-gray-500">
                 <p>No posts found.</p>

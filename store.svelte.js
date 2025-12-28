@@ -1,21 +1,30 @@
 // Svelte 5 Global Store
 export const appState = $state({
-    activeTab: 'hot', // hot, home, timeline, settings, favorites
+    activeTab: 'hot', // hot, home, timeline, settings, favorites, history, blacklist, about
     searchQuery: '',
     subscriptions: [],
     history: [],
-    blacklist: [],
+    blacklist: [], // Array of { tag: string, enabled: boolean }
     
     // Auth
     auth: {
         username: '',
         apiKey: ''
     },
+    userStats: {
+        favorite_count: 0
+    },
 
     // Settings
     settings: {
         autoplay: true,
-        enableHistory: true
+        enableHistory: true,
+        geminiApiKey: '',
+        proxy: {
+            type: 'http',
+            host: '',
+            port: ''
+        }
     },
 
     // Actions
@@ -43,6 +52,29 @@ export const appState = $state({
         this.persist();
     },
 
+    // Blacklist Actions
+    addBlacklistTag(tag) {
+        if (!tag) return;
+        const normalized = tag.trim().toLowerCase();
+        if (!this.blacklist.some(b => b.tag === normalized)) {
+            this.blacklist.push({ tag: normalized, enabled: true });
+            this.persist();
+        }
+    },
+    
+    removeBlacklistTag(tag) {
+        this.blacklist = this.blacklist.filter(b => b.tag !== tag);
+        this.persist();
+    },
+
+    toggleBlacklistTag(tag) {
+        const item = this.blacklist.find(b => b.tag === tag);
+        if (item) {
+            item.enabled = !item.enabled;
+            this.persist();
+        }
+    },
+
     login(username, apiKey) {
         this.auth = { username, apiKey };
         this.persist();
@@ -62,7 +94,13 @@ export const appState = $state({
             this.history = data.history || [];
             this.auth = data.auth || { username: '', apiKey: '' };
             this.blacklist = data.blacklist || [];
-            this.settings = { ...this.settings, ...data.settings };
+            
+            // Deep merge settings
+            this.settings = { 
+                ...this.settings, 
+                ...data.settings,
+                proxy: { ...this.settings.proxy, ...(data.settings?.proxy || {}) }
+            };
         }
     },
 

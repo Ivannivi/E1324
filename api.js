@@ -1,26 +1,23 @@
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import { GoogleGenAI } from "@google/genai";
 
 // Detection for Tauri environment
 const isTauri = typeof window !== 'undefined' && window.__TAURI_INTERNALS__ !== undefined;
+const USER_AGENT = "e1547-Tauri/1.4 (by clragon on e621)";
 
 /**
  * Universal Fetch Wrapper
- * Uses Tauri's native HTTP plugin if available to bypass CORS.
- * Falls back to browser fetch for development.
  */
 export const http = {
     fetch: async (url, options = {}) => {
         const headers = options.headers || {};
-        // Add default User-Agent for e621
-        headers['User-Agent'] = "e1547-Tauri/1.0 (by clragon on e621)";
+        headers['User-Agent'] = USER_AGENT;
         
         const finalOptions = { ...options, headers };
 
         if (isTauri) {
-            console.log(`[Tauri Network] Fetching: ${url}`);
             return await tauriFetch(url, finalOptions);
         } else {
-            console.log(`[Browser Network] Fetching: ${url}`);
             return await window.fetch(url, finalOptions);
         }
     }
@@ -45,7 +42,7 @@ export const api = {
             const data = await res.json();
             return data.posts || [];
         } catch (e) {
-            console.error(e);
+            console.error("Fetch Error:", e);
             return [];
         }
     },
@@ -56,5 +53,51 @@ export const api = {
             const data = await res.json();
             return data.comments || [];
         } catch (e) { return []; }
+    },
+
+    getWiki: async (tag) => {
+        try {
+            const res = await http.fetch(`https://e621.net/wiki_pages.json?search[title]=${encodeURIComponent(tag)}`);
+            const data = await res.json();
+            return data.length > 0 ? data[0] : null;
+        } catch (e) { return null; }
+    },
+
+    getTags: async (term) => {
+        if (term.length < 3) return [];
+        try {
+            const res = await http.fetch(`https://e621.net/tags/autocomplete.json?search[name_matches]=${encodeURIComponent(term)}`);
+            return await res.json();
+        } catch (e) { return []; }
+    },
+    
+    getUserDetails: async (username, auth) => {
+        try {
+             const headers = {};
+             if (auth?.username && auth?.apiKey) {
+                 headers["Authorization"] = "Basic " + btoa(`${auth.username}:${auth.apiKey}`);
+             }
+             const res = await http.fetch(`https://e621.net/users.json?search[name_matches]=${username}`, { headers });
+             const data = await res.json();
+             return data.length > 0 ? data[0] : null;
+        } catch (e) { return null; }
+    },
+
+    // Gemini Integration
+    smartSearch: async (prompt, apiKey) => {
+        if (!apiKey) return prompt;
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const response = await ai.models.generateContent({
+              model: 'gemini-2.0-flash',
+              contents: `You are an expert at searching the e621 image board. 
+              Convert the following natural language description into a standard, space-separated e621 tag search string.
+              Only return the tag string. Do not include markdown formatting. Description: "${prompt}"`,
+            });
+            return response.text?.trim() || prompt;
+        } catch (e) {
+            console.error("Gemini Error:", e);
+            return prompt;
+        }
     }
 };
