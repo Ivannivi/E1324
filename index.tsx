@@ -7,7 +7,7 @@ import {
   Bot, Loader2, Play, Heart, Share2, Sparkles,
   MessageSquare, User, Save, Globe, Shield,
   Flame, Bookmark, History, Clock, ListPlus, LogIn, LogOut, BookOpen,
-  Ban, Plus, Trash2, CheckCircle2, Circle, Key
+  Ban, Plus, Trash2, CheckCircle2, Circle, Key, Laptop
 } from "lucide-react";
 
 // --- Types ---
@@ -651,14 +651,36 @@ const AboutView = () => (
         <h1 className="text-3xl font-bold text-white mb-2">e1547 Web</h1>
         <p className="text-gray-400 mb-8">A sophisticated web interface for e621</p>
         <div className="bg-[#161b22] p-6 rounded-xl border border-gray-800 w-full text-left">
-             <h3 className="font-bold text-white mb-2">Version 1.3.0</h3>
-             <ul className="text-sm text-gray-400 space-y-1 list-disc pl-4">
-                 <li>Added PWA Support (Installable on Linux/Win/Android)</li>
+             <h3 className="font-bold text-white mb-2">Version 1.3.1</h3>
+             <ul className="text-sm text-gray-400 space-y-1 list-disc pl-4 mb-4">
+                 <li>Added Native PWA Installation Support</li>
                  <li>Added Gemini API Key Setting</li>
                  <li>Fixed Favorites Loading</li>
                  <li>Added Blacklist Manager</li>
                  <li>Added User Login & Blacklist Sync</li>
              </ul>
+        </div>
+        
+        <div className="bg-[#161b22] p-6 rounded-xl border border-gray-800 w-full text-left mt-4">
+             <h3 className="font-bold text-white mb-2">Installation Guide</h3>
+             <div className="space-y-4 text-sm text-gray-400">
+                 <div>
+                     <strong className="text-white">Arch Linux (via Chromium/Chrome)</strong>
+                     <p>1. Open this app in Chromium or Google Chrome.</p>
+                     <p>2. Click the "Install App" button in the sidebar (if available) or the "Install" icon in the URL bar.</p>
+                     <p>3. This creates a .desktop file, adding "e1547" to your application launcher (Rofi, Dmenu, Gnome, etc.) as a standalone app.</p>
+                 </div>
+                 <div>
+                     <strong className="text-white">Android</strong>
+                     <p>1. Open in Chrome.</p>
+                     <p>2. Tap the menu (⋮) -> "Install app" or "Add to Home screen".</p>
+                 </div>
+                 <div>
+                     <strong className="text-white">Windows</strong>
+                     <p>1. Open in Edge or Chrome.</p>
+                     <p>2. Click "Install e1547" in the address bar.</p>
+                 </div>
+             </div>
         </div>
     </div>
 );
@@ -687,6 +709,7 @@ const App = () => {
   const [isThinking, setIsThinking] = useState(false);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showLogin, setShowLogin] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null); // State for PWA prompt
   
   // Auth & Settings
   const [creds, setCreds] = useState<AuthCreds | null>(null);
@@ -748,6 +771,17 @@ const App = () => {
 
     const savedSettings = localStorage.getItem("e1547_settings");
     if (savedSettings) setSettings({ ...settings, ...JSON.parse(savedSettings) });
+
+    // Capture Install Prompt
+    const handleBeforeInstallPrompt = (e: any) => {
+        e.preventDefault();
+        setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }
   }, []);
 
   // Infinite Scroll Observer
@@ -855,6 +889,15 @@ const App = () => {
       setCreds(null);
       setUserProfile(null);
       localStorage.removeItem("e1547_creds");
+  };
+
+  const handleInstallClick = async () => {
+      if (!installPrompt) return;
+      installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      if (outcome === 'accepted') {
+          setInstallPrompt(null);
+      }
   };
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -1054,6 +1097,17 @@ const App = () => {
             <div className="my-2 border-t border-gray-800/50"></div>
             <SidebarItem icon={Settings} label="Settings" active={activeTab === "settings"} onClick={() => { setActiveTab("settings"); setIsSidebarOpen(false); }} />
             <SidebarItem icon={Info} label="About" active={activeTab === "about"} onClick={() => { setActiveTab("about"); setIsSidebarOpen(false); }} />
+            
+            {installPrompt && (
+                <div className="mt-2 bg-blue-900/20 p-2 rounded border border-blue-900/50">
+                    <SidebarItem 
+                        icon={Download} 
+                        label="Install App" 
+                        active={false} 
+                        onClick={handleInstallClick}
+                    />
+                </div>
+            )}
           </div>
         </div>
 
