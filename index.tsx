@@ -648,39 +648,15 @@ const AboutView = () => (
         <div className="w-24 h-24 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-blue-900/20">
              <span className="text-white font-bold text-5xl">e</span>
         </div>
-        <h1 className="text-3xl font-bold text-white mb-2">e1547 Web</h1>
-        <p className="text-gray-400 mb-8">A sophisticated web interface for e621</p>
+        <h1 className="text-3xl font-bold text-white mb-2">e1547</h1>
+        <p className="text-gray-400 mb-8">A sophisticated interface for e621</p>
         <div className="bg-[#161b22] p-6 rounded-xl border border-gray-800 w-full text-left">
-             <h3 className="font-bold text-white mb-2">Version 1.3.1</h3>
+             <h3 className="font-bold text-white mb-2">Version 1.4.0 (Tauri)</h3>
              <ul className="text-sm text-gray-400 space-y-1 list-disc pl-4 mb-4">
-                 <li>Added Native PWA Installation Support</li>
-                 <li>Added Gemini API Key Setting</li>
-                 <li>Fixed Favorites Loading</li>
-                 <li>Added Blacklist Manager</li>
-                 <li>Added User Login & Blacklist Sync</li>
+                 <li>Optimized for Desktop Usage</li>
+                 <li>Removed Web Service Workers</li>
+                 <li>Improved Window Dragging Support</li>
              </ul>
-        </div>
-        
-        <div className="bg-[#161b22] p-6 rounded-xl border border-gray-800 w-full text-left mt-4">
-             <h3 className="font-bold text-white mb-2">Installation Guide</h3>
-             <div className="space-y-4 text-sm text-gray-400">
-                 <div>
-                     <strong className="text-white">Arch Linux (via Chromium/Chrome)</strong>
-                     <p>1. Open this app in Chromium or Google Chrome.</p>
-                     <p>2. Click the "Install App" button in the sidebar (if available) or the "Install" icon in the URL bar.</p>
-                     <p>3. This creates a .desktop file, adding "e1547" to your application launcher (Rofi, Dmenu, Gnome, etc.) as a standalone app.</p>
-                 </div>
-                 <div>
-                     <strong className="text-white">Android</strong>
-                     <p>1. Open in Chrome.</p>
-                     <p>2. Tap the menu (⋮) &rarr; "Install app" or "Add to Home screen".</p>
-                 </div>
-                 <div>
-                     <strong className="text-white">Windows</strong>
-                     <p>1. Open in Edge or Chrome.</p>
-                     <p>2. Click "Install e1547" in the address bar.</p>
-                 </div>
-             </div>
         </div>
     </div>
 );
@@ -709,7 +685,6 @@ const App = () => {
   const [isThinking, setIsThinking] = useState(false);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showLogin, setShowLogin] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null); // State for PWA prompt
   
   // Auth & Settings
   const [creds, setCreds] = useState<AuthCreds | null>(null);
@@ -771,17 +746,6 @@ const App = () => {
 
     const savedSettings = localStorage.getItem("e1547_settings");
     if (savedSettings) setSettings({ ...settings, ...JSON.parse(savedSettings) });
-
-    // Capture Install Prompt
-    const handleBeforeInstallPrompt = (e: any) => {
-        e.preventDefault();
-        setInstallPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    }
   }, []);
 
   // Infinite Scroll Observer
@@ -891,15 +855,6 @@ const App = () => {
       localStorage.removeItem("e1547_creds");
   };
 
-  const handleInstallClick = async () => {
-      if (!installPrompt) return;
-      installPrompt.prompt();
-      const { outcome } = await installPrompt.userChoice;
-      if (outcome === 'accepted') {
-          setInstallPrompt(null);
-      }
-  };
-
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchInput.trim()) return;
@@ -1006,6 +961,9 @@ const App = () => {
   return (
     <div className="min-h-screen bg-[#0d1117] text-gray-300 flex font-sans">
       
+      {/* Titlebar Drag Region for Tauri */}
+      <div className="fixed top-0 left-0 right-0 h-6 z-[60] titlebar-drag-region bg-transparent" />
+
       {showLogin && <LoginModal onClose={() => setShowLogin(false)} onLogin={handleLogin} />}
 
       {isSidebarOpen && (
@@ -1017,7 +975,7 @@ const App = () => {
 
       <aside className={`
         fixed lg:sticky top-0 left-0 h-screen w-64 bg-[#161b22] border-r border-gray-800 
-        transform transition-transform duration-300 z-50 flex flex-col
+        transform transition-transform duration-300 z-50 flex flex-col pt-6
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="p-6">
@@ -1027,7 +985,7 @@ const App = () => {
             </div>
             <div>
                <h1 className="text-white font-bold text-lg leading-none">e1547</h1>
-               <span className="text-xs text-gray-500">Web Client</span>
+               <span className="text-xs text-gray-500">Desktop</span>
             </div>
           </div>
 
@@ -1098,16 +1056,6 @@ const App = () => {
             <SidebarItem icon={Settings} label="Settings" active={activeTab === "settings"} onClick={() => { setActiveTab("settings"); setIsSidebarOpen(false); }} />
             <SidebarItem icon={Info} label="About" active={activeTab === "about"} onClick={() => { setActiveTab("about"); setIsSidebarOpen(false); }} />
             
-            {installPrompt && (
-                <div className="mt-2 bg-blue-900/20 p-2 rounded border border-blue-900/50">
-                    <SidebarItem 
-                        icon={Download} 
-                        label="Install App" 
-                        active={false} 
-                        onClick={handleInstallClick}
-                    />
-                </div>
-            )}
           </div>
         </div>
 
@@ -1136,7 +1084,7 @@ const App = () => {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden pt-6">
         <header className="bg-[#0d1117]/80 backdrop-blur border-b border-gray-800 p-4 z-30">
           <div className="max-w-7xl mx-auto flex items-center space-x-4">
             <button className="lg:hidden text-white" onClick={() => setIsSidebarOpen(true)}><Menu /></button>
