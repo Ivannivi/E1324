@@ -673,7 +673,7 @@ const AboutView = () => (
                  <div>
                      <strong className="text-white">Android</strong>
                      <p>1. Open in Chrome.</p>
-                     <p>2. Tap the menu (⋮) -> "Install app" or "Add to Home screen".</p>
+                     <p>2. Tap the menu (⋮) &rarr; "Install app" or "Add to Home screen".</p>
                  </div>
                  <div>
                      <strong className="text-white">Windows</strong>
