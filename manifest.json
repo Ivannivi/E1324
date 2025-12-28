@@ -1,0 +1,21 @@
+{
+  "name": "e1547 Web Client",
+  "short_name": "e1547",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "description": "A sophisticated web interface for e621",
+  "icons": [
+    {
+      "src": "https://e621.net/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/E621_Logo_2021.svg/512px-E621_Logo_2021.svg.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

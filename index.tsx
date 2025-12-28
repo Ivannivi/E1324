@@ -7,7 +7,7 @@ import {
   Bot, Loader2, Play, Heart, Share2, Sparkles,
   MessageSquare, User, Save, Globe, Shield,
   Flame, Bookmark, History, Clock, ListPlus, LogIn, LogOut, BookOpen,
-  Ban, Plus, Trash2, CheckCircle2, Circle
+  Ban, Plus, Trash2, CheckCircle2, Circle, Key
 } from "lucide-react";
 
 // --- Types ---
@@ -66,6 +66,7 @@ interface AppSettings {
   proxyHost: string;
   proxyPort: string;
   enableHistory: boolean;
+  geminiApiKey: string;
 }
 
 interface AuthCreds {
@@ -158,10 +159,12 @@ const fetchTagSuggestions = async (term: string): Promise<any[]> => {
 
 // --- Gemini Service ---
 
-const generateSmartTags = async (query: string): Promise<string> => {
-  if (!process.env.API_KEY) return query;
+const generateSmartTags = async (query: string, apiKey?: string): Promise<string> => {
+  const key = apiKey || process.env.API_KEY;
+  if (!key) return query;
+  
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: key });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `You are an expert at searching the e621 image board. 
@@ -170,6 +173,7 @@ const generateSmartTags = async (query: string): Promise<string> => {
     });
     return response.text?.trim() || query;
   } catch (e) {
+    console.error("Gemini Error:", e);
     return query;
   }
 };
@@ -609,6 +613,23 @@ const SettingsView = ({ settings, setSettings }: { settings: AppSettings, setSet
 
                 <div className="border-t border-gray-800 pt-6">
                     <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                         <Sparkles size={18} /> AI Settings
+                    </h3>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-1">Gemini API Key</label>
+                        <input 
+                            type="password" 
+                            value={settings.geminiApiKey || ''}
+                            onChange={(e) => update('geminiApiKey', e.target.value)}
+                            placeholder="AI Studio API Key"
+                            className="w-full bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 outline-none"
+                        />
+                        <p className="text-xs text-gray-600 mt-2">Required for smart search features. Key is stored locally.</p>
+                    </div>
+                </div>
+
+                <div className="border-t border-gray-800 pt-6">
+                    <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
                          <Shield size={18} /> Proxy Settings
                     </h3>
                     <div className="space-y-4">
@@ -630,13 +651,13 @@ const AboutView = () => (
         <h1 className="text-3xl font-bold text-white mb-2">e1547 Web</h1>
         <p className="text-gray-400 mb-8">A sophisticated web interface for e621</p>
         <div className="bg-[#161b22] p-6 rounded-xl border border-gray-800 w-full text-left">
-             <h3 className="font-bold text-white mb-2">Version 1.2.1</h3>
+             <h3 className="font-bold text-white mb-2">Version 1.3.0</h3>
              <ul className="text-sm text-gray-400 space-y-1 list-disc pl-4">
+                 <li>Added PWA Support (Installable on Linux/Win/Android)</li>
+                 <li>Added Gemini API Key Setting</li>
                  <li>Fixed Favorites Loading</li>
                  <li>Added Blacklist Manager</li>
                  <li>Added User Login & Blacklist Sync</li>
-                 <li>Added Timeline, Subscriptions, Bookmarks</li>
-                 <li>Added Wiki for single tags</li>
              </ul>
         </div>
     </div>
@@ -675,7 +696,8 @@ const App = () => {
       proxyType: 'http',
       proxyHost: '',
       proxyPort: '',
-      enableHistory: true
+      enableHistory: true,
+      geminiApiKey: ''
   });
 
   const loadMoreRef = useRef(null);
@@ -843,7 +865,7 @@ const App = () => {
     
     if (isSmartSearch) {
         setIsThinking(true);
-        const translatedTags = await generateSmartTags(searchInput);
+        const translatedTags = await generateSmartTags(searchInput, settings.geminiApiKey);
         setIsThinking(false);
         setSearchQuery(translatedTags);
     } else {
